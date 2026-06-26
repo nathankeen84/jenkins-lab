@@ -42,10 +42,10 @@ pipeline {
                         mkdir -p .trivycache
                         docker run --rm \
                             --user "$(id -u):$(id -g)" \
+                            -e TRIVY_CACHE_DIR=/workspace/.trivycache \
                             -v "$PWD:/workspace" \
-                            -v "$PWD/.trivycache:/root/.cache" \
                             aquasec/trivy:0.54.1 \
-                            fs --format table --output /workspace/trivy-fs-report.txt /workspace
+                            fs --cache-dir /workspace/.trivycache --format table --output /workspace/trivy-fs-report.txt /workspace
                         echo "FS scan complete. Report saved to trivy-fs-report.txt"
                     '''
                     archiveArtifacts artifacts: 'trivy-fs-report.txt', allowEmptyArchive: false
@@ -94,11 +94,11 @@ pipeline {
                         mkdir -p .trivycache
                         docker run --rm \
                             --user "$(id -u):$(id -g)" \
+                            -e TRIVY_CACHE_DIR=/workspace/.trivycache \
                             -v /var/run/docker.sock:/var/run/docker.sock \
                             -v "$PWD:/workspace" \
-                            -v "$PWD/.trivycache:/root/.cache" \
                             aquasec/trivy:0.54.1 \
-                            image --format table --output /workspace/trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
+                            image --cache-dir /workspace/.trivycache --format table --output /workspace/trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
                         echo "Image scan complete. Report saved to trivy-image-report.txt"
                     '''
                     archiveArtifacts artifacts: 'trivy-image-report.txt', allowEmptyArchive: false
