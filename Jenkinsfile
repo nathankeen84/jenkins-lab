@@ -21,11 +21,27 @@ pipeline {
                             docker rm ${APP_CONTAINER} ${NGINX_CONTAINER} || true
                             echo "Removing old network..."
                             docker network rm ${DOCKER_NETWORK} || true
+                            echo "Removing previous scan reports and venv..."
+                            rm -f trivy-fs-report.txt trivy-image-report.txt
+                            rm -rf venv
                             echo "Clean-up completed successfully"
                         '''
                     } catch (Exception e) {
                         echo "Clean-up errors (non-blocking): ${e.message}"
                     }
+                }
+            }
+        }
+        
+        stage('Trivy FS Scan') {
+            steps {
+                script {
+                    echo "========== Trivy FS Scan =========="
+                    sh '''
+                        trivy fs --format table -o trivy-fs-report.txt .
+                        echo "FS scan complete. Report saved to trivy-fs-report.txt"
+                    '''
+                    archiveArtifacts artifacts: 'trivy-fs-report.txt', allowEmptyArchive: false
                 }
             }
         }
@@ -59,6 +75,43 @@ pipeline {
                         echo "Images built successfully"
                         docker images | grep -E "${APP_CONTAINER}|${NGINX_CONTAINER}"
                     '''
+                }
+            }
+        }
+        
+        stage('Trivy Image Scan') {
+            steps {
+                script {
+                    echo "========== Trivy Image Scan =========="
+                    sh '''
+                        trivy image --format table -o trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
+                        echo "Image scan complete. Report saved to trivy-image-report.txt"
+                    '''
+                    archiveArtifacts artifacts: 'trivy-image-report.txt', allowEmptyArchive: false
+                }
+            }
+        }
+        
+        stage('Unit Test') {
+            steps {
+                script {
+                    echo "========== Unit Test Stage =========="
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        sh '''
+                            echo "Installing python3-venv..."
+                            sudo apt-get install -y python3-venv
+                            
+                            echo "Creating virtual environment..."
+                            python3 -m venv venv
+                            
+                            echo "Installing test dependencies..."
+                            venv/bin/pip install --upgrade pip
+                            venv/bin/pip install -r requirements.txt
+                            
+                            echo "Running unit tests..."
+                            venv/bin/python -m pytest test_app.py -v
+                        '''
+                    }
                 }
             }
         }

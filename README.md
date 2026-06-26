@@ -46,6 +46,7 @@ sudo usermod -aG docker jenkins
 
 # Restart Jenkins for the change to take effect
 sudo systemctl restart jenkins
+
 # or if using Docker
 docker restart jenkins-container-name
 ```
