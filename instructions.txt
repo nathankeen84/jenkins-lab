@@ -1,0 +1,41 @@
+
+Simple version:
+
+phase1:
+Task 1 app:
+    - local set up - install docker + add jenkins/ubuntu to the docker group.
+    - repo set-up - task1 files(app.py, nginx.conf, reqs.txt,) dockerfile(s), jenkinsfile
+    - jenkinsfile:
+        - clean-up stage
+        - set-up (network)
+        - build images
+        - run containers
+
+    - manual check in browser or curl. 
+
+phase2:
+    - Trivy:
+        - fs scan for when we first pull down repo + archive the output. 
+        - Run an image scan + archive
+    - Unit test:
+        - I will provide a test - run it and use catchError + mark failures as unstable. 
+        - Requires some set-up and installations. (venv(installation) + requests module(pip install...))
+
+
+Switch to production version:
+    - Switch to new Dockerfile, new app.py, run.sh for entrypoint, new test.
+    - Manual quality gate (input)
+    - push to Dockerhub - credentials. I'll give you this code. 
+    - Use private repo - credentials.
+    - Environment - tags and image names as vars. 
+    - Create metadat archives + SBOM.
+    - Sonarqube analysis. - instructions given. 
+
+Stretch AI is ok:
+    - Gate for images over 200mb. Groovy logic - ai can generate this. 
+    - Parallelism - initial tests and scans run togeather. 
+    - Image builds can be parrelised. 
+    - Run conytainers + smoke test.
+
+Extra Stretch:
+    - Parametrization -  bool param for regular build or experimental build (docker-slim). 
