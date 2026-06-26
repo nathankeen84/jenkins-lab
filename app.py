@@ -1,36 +1,18 @@
-#!/usr/bin/env python3
-"""
-Simple Flask application for Task 1
-"""
 from flask import Flask, jsonify
-import os
+from os import getenv
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET'])
+
+@app.route("/")
 def home():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'task1-app',
-        'version': '1.0.0',
-        'environment': os.getenv('ENV', 'development')
-    }), 200
+    hostname = getenv("HOSTNAME")
+    name = getenv("YOUR_NAME")
+    if name is None:
+        name = "friend"
+    return f"<h1>Hello {name}.</h1>\n\n<h2>I'm currently running in {hostname}.</h2>\n"
 
-@app.route('/health', methods=['GET'])
+
+@app.route("/health")
 def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'ok'}), 200
-
-@app.route('/api/info', methods=['GET'])
-def info():
-    """API info endpoint"""
-    return jsonify({
-        'name': 'Task 1 App',
-        'version': '1.0.0',
-        'description': 'Jenkins Lab Task 1 Application'
-    }), 200
-
-if __name__ == '__main__':
-    # Run on all interfaces, port 5000
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    return jsonify(status="ok"), 200

@@ -1,25 +1,29 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY app.py .
+COPY . .
 
-# Expose port
-EXPOSE 5000
+RUN useradd -u 10001 -r -m -d /home/appuser -s /usr/sbin/nologin appuser \
+ && chmod +x /app/run.sh \
+ && chown -R appuser:appuser /app /home/appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+USER appuser
 
-# Run application
-CMD ["python", "app.py"]
+EXPOSE 5500
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:5500/health || exit 1
+
+ENTRYPOINT ["/app/run.sh"]

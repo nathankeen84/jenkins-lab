@@ -1,42 +1,22 @@
-import os
-
-import pytest
-
+import unittest
 from app import app
 
 
-@pytest.fixture()
-def client():
-    app.config["TESTING"] = True
-    with app.test_client() as test_client:
-        yield test_client
+class FlaskAppTests(unittest.TestCase):
+    def setUp(self):
+        self.client = app.test_client()
+
+    def test_home_route(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Hello", response.data)
+        self.assertIn(b"I'm currently running in", response.data)
+
+    def test_health_route(self):
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"status": "ok"})
 
 
-def test_home_endpoint(client):
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert response.get_json() == {
-        "status": "healthy",
-        "service": "task1-app",
-        "version": "1.0.0",
-        "environment": os.getenv("ENV", "development"),
-    }
-
-
-def test_health_endpoint(client):
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.get_json() == {"status": "ok"}
-
-
-def test_info_endpoint(client):
-    response = client.get("/api/info")
-
-    assert response.status_code == 200
-    assert response.get_json() == {
-        "name": "Task 1 App",
-        "version": "1.0.0",
-        "description": "Jenkins Lab Task 1 Application",
-    }
+if __name__ == "__main__":
+    unittest.main()
