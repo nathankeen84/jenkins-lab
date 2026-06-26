@@ -38,6 +38,15 @@ pipeline {
                 script {
                     echo "========== Trivy FS Scan =========="
                     sh '''
+                        if ! command -v trivy >/dev/null 2>&1; then
+                            echo "Trivy not found. Installing..."
+                            sudo apt-get update
+                            sudo apt-get install -y wget gnupg lsb-release
+                            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+                            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+                            sudo apt-get update
+                            sudo apt-get install -y trivy
+                        fi
                         trivy fs --format table -o trivy-fs-report.txt .
                         echo "FS scan complete. Report saved to trivy-fs-report.txt"
                     '''
@@ -109,7 +118,7 @@ pipeline {
                             venv/bin/pip install -r requirements.txt
                             
                             echo "Running unit tests..."
-                            venv/bin/python -m pytest test_app.py -v
+                            venv/bin/python -m pytest test-app.py -v
                         '''
                     }
                 }
