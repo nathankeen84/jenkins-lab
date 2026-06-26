@@ -24,6 +24,7 @@ pipeline {
                             echo "Removing previous scan reports and venv..."
                             rm -f trivy-fs-report.txt trivy-image-report.txt
                             rm -rf venv
+                            rm -rf .trivycache
                             echo "Clean-up completed successfully"
                         '''
                     } catch (Exception e) {
@@ -38,16 +39,13 @@ pipeline {
                 script {
                     echo "========== Trivy FS Scan =========="
                     sh '''
-                        if ! command -v trivy >/dev/null 2>&1; then
-                            echo "Trivy not found. Installing..."
-                            sudo apt-get update
-                            sudo apt-get install -y wget gnupg lsb-release
-                            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-                            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-                            sudo apt-get update
-                            sudo apt-get install -y trivy
-                        fi
-                        trivy fs --format table -o trivy-fs-report.txt .
+                        mkdir -p .trivycache
+                        docker run --rm \
+                            --user "$(id -u):$(id -g)" \
+                            -v "$PWD:/workspace" \
+                            -v "$PWD/.trivycache:/root/.cache" \
+                            aquasec/trivy:0.54.1 \
+                            fs --format table --output /workspace/trivy-fs-report.txt /workspace
                         echo "FS scan complete. Report saved to trivy-fs-report.txt"
                     '''
                     archiveArtifacts artifacts: 'trivy-fs-report.txt', allowEmptyArchive: false
@@ -93,7 +91,14 @@ pipeline {
                 script {
                     echo "========== Trivy Image Scan =========="
                     sh '''
-                        trivy image --format table -o trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
+                        mkdir -p .trivycache
+                        docker run --rm \
+                            --user "$(id -u):$(id -g)" \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v "$PWD:/workspace" \
+                            -v "$PWD/.trivycache:/root/.cache" \
+                            aquasec/trivy:0.54.1 \
+                            image --format table --output /workspace/trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
                         echo "Image scan complete. Report saved to trivy-image-report.txt"
                     '''
                     archiveArtifacts artifacts: 'trivy-image-report.txt', allowEmptyArchive: false
@@ -107,18 +112,13 @@ pipeline {
                     echo "========== Unit Test Stage =========="
                     catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                         sh '''
-                            echo "Installing python3-venv..."
-                            sudo apt-get install -y python3-venv
-                            
-                            echo "Creating virtual environment..."
-                            python3 -m venv venv
-                            
-                            echo "Installing test dependencies..."
-                            venv/bin/pip install --upgrade pip
-                            venv/bin/pip install -r requirements.txt
-                            
-                            echo "Running unit tests..."
-                            venv/bin/python -m pytest test-app.py -v
+                            echo "Running unit tests in isolated Python container..."
+                            docker run --rm \
+                                --user "$(id -u):$(id -g)" \
+                                -v "$PWD:/workspace" \
+                                -w /workspace \
+                                python:3.11-slim \
+                                sh -c "pip install --no-cache-dir -r requirements.txt && pytest test-app.py -v"
                         '''
                     }
                 }
