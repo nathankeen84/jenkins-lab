@@ -22,7 +22,7 @@ pipeline {
                             echo "Removing old network..."
                             docker network rm ${DOCKER_NETWORK} || true
                             echo "Removing previous scan reports and venv..."
-                            rm -f trivy-fs-report.txt trivy-image-report.txt
+                            rm -f trivy-fs-report.txt trivy-image-report.txt task1-app.tar
                             rm -rf venv
                             rm -rf .trivycache
                             echo "Clean-up completed successfully"
@@ -92,13 +92,15 @@ pipeline {
                     echo "========== Trivy Image Scan =========="
                     sh '''
                         mkdir -p .trivycache
+                        echo "Saving image to tar archive for scanning..."
+                        docker save ${APP_CONTAINER}:${IMAGE_TAG} -o task1-app.tar
+
                         docker run --rm \
                             --user "$(id -u):$(id -g)" \
                             -e TRIVY_CACHE_DIR=/workspace/.trivycache \
-                            -v /var/run/docker.sock:/var/run/docker.sock \
                             -v "$PWD:/workspace" \
                             aquasec/trivy:0.54.1 \
-                            image --cache-dir /workspace/.trivycache --format table --output /workspace/trivy-image-report.txt ${APP_CONTAINER}:${IMAGE_TAG}
+                            image --cache-dir /workspace/.trivycache --input /workspace/task1-app.tar --format table --output /workspace/trivy-image-report.txt
                         echo "Image scan complete. Report saved to trivy-image-report.txt"
                     '''
                     archiveArtifacts artifacts: 'trivy-image-report.txt', allowEmptyArchive: false
