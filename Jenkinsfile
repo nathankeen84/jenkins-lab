@@ -114,13 +114,13 @@ pipeline {
                     echo "========== Unit Test Stage =========="
                     catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                         sh '''
-                            echo "Running unit tests in isolated Python container..."
+                            echo "Running unit tests in built app image..."
                             docker run --rm \
                                 --user "$(id -u):$(id -g)" \
                                 -v "$PWD:/workspace" \
                                 -w /workspace \
-                                python:3.11-slim \
-                                sh -c "pip install --no-cache-dir -r requirements.txt && pytest test-app.py -v"
+                                ${APP_CONTAINER}:${IMAGE_TAG} \
+                                python -m pytest test-app.py -v
                         '''
                     }
                 }
